@@ -20,17 +20,43 @@ let newMemberObject = {
     id: "",
 };
 
+const resetBot = (chatId) => {
+    userStates[chatId] = {};
+
+    newMemberObject = {
+        Course: "",
+        ["Name in Persian"]: "",
+        ["Telegram ID"]: "",
+        id: "",
+    };
+
+    bot.sendMessage(
+        chatId,
+        `Unknown Command
+Use /start command to restart the bot`
+    );
+};
+
 const showUpdateNewMember = (chatId) => {
     const entriesObj = Object.entries(newMemberObject);
-    let outputStr = "";
+    let outputStr = "New Members' information: \n\n";
     entriesObj.map(
         (row) =>
-            (outputStr += `${row[0] === "id" ? "Name in English" : row[0]}: ${
-                row[1]
-            }\n`)
+            (outputStr += `${
+                row[0] === "id"
+                    ? "Full Name in English"
+                    : row[0] === "Name in Persian"
+                    ? "Full Name in Farsi"
+                    : row[0]
+            }: ${row[1] ? row[1] : "-"}\n`)
     );
-    // console.log(outputStr);
     bot.sendMessage(chatId, outputStr);
+};
+
+const removeKeyboard = {
+    reply_markup: {
+        remove_keyboard: true,
+    },
 };
 
 fetchData().then((data) => {
@@ -46,6 +72,10 @@ fetchData().then((data) => {
         const text = msg.text;
         const username = msg.from.username;
 
+        if (!Object.keys(userStates).length) {
+            userStates[chatId] = {};
+        }
+
         if (admins.includes(username)) {
             isAdminUsingApp = true;
         } else {
@@ -53,43 +83,115 @@ fetchData().then((data) => {
         }
 
         if (isAdminUsingApp) {
+            //
+            // Add New Member
+            //
             if (userStates[chatId] && userStates[chatId].state) {
                 switch (userStates[chatId].state) {
-                    case "Add NameEN":
-                        newMemberObject = { ...newMemberObject, id: text };
-                        showUpdateNewMember(chatId);
+                    case "Add Course": // 1
+                        if (
+                            text === "Technical Mentor" ||
+                            text === "C# Intern" ||
+                            text === "ML Intern" ||
+                            text === "Web Intern"
+                        ) {
+                            newMemberObject = {
+                                ...newMemberObject,
+                                Course: text,
+                            };
+                            showUpdateNewMember(chatId);
+
+                            bot.sendMessage(
+                                chatId,
+                                "Write members' full name in Farsi",
+                                removeKeyboard
+                            );
+                            userStates[chatId] = {
+                                state: "Add NameFA",
+                            };
+                        } else {
+                            userStates[chatId] = {};
+                        }
 
                         break;
-                    case "Add NameFA":
+
+                    case "Add NameFA": // 2
                         newMemberObject = {
                             ...newMemberObject,
                             ["Name in Persian"]: text,
                         };
                         showUpdateNewMember(chatId);
 
-                        break;
-                    case "Add Course":
-                        newMemberObject = {
-                            ...newMemberObject,
-                            Course: text,
+                        bot.sendMessage(chatId, "Write members' Telegram ID");
+                        userStates[chatId] = {
+                            state: "Add TelegramID",
                         };
-                        showUpdateNewMember(chatId);
 
                         break;
-                    case "Add TelegramID":
+
+                    case "Add TelegramID": // 3
                         newMemberObject = {
                             ...newMemberObject,
                             ["Telegram ID"]: text,
                         };
                         showUpdateNewMember(chatId);
 
+                        bot.sendMessage(
+                            chatId,
+                            "Write members' full name in English"
+                        );
+                        userStates[chatId] = {
+                            state: "Add NameEN",
+                        };
+
                         break;
+
+                    case "Add NameEN": // 4
+                        newMemberObject = { ...newMemberObject, id: text };
+                        showUpdateNewMember(chatId);
+
+                        const submitNewMember = {
+                            reply_markup: {
+                                keyboard: [
+                                    ["Yes. Add New Member to List"],
+                                    ["No. Go Back to First Menu"],
+                                ],
+                                resize_keyboard: true,
+                                one_time_keyboard: true,
+                                input_field_placeholder: "Choose an action",
+                            },
+                        };
+                        bot.sendMessage(
+                            chatId,
+                            "Are new members' information correct?",
+                            submitNewMember
+                        );
+                        userStates[chatId] = {
+                            state: "submit list",
+                        };
+
+                        break;
+
+                    case "submit list": // 5
+                        if (
+                            !(
+                                text === "Yes. Add New Member to List" ||
+                                text === "No. Go Back to First Menu"
+                            )
+                        ) {
+                            userStates[chatId] = {};
+                        }
+
+                        break;
+
                     default:
+                        resetBot(chatId);
                         break;
                 }
-                userStates[chatId].state = "";
             }
-
+            //
+            // Main Bot Action Handler
+            //
             switch (text) {
                 case "/start":
                 case "Back to Main Menu":
@@ -123,8 +225,8 @@ Please select a feature to use:`,
                     bot.sendMessage(chatId, "Coming soon!");
                     break;
 
-                case "Update Step 0 Message":
                 case "Back to Step 0 Actions Menu":
+                case "Update Step 0 Message":
                     const updateStep0Options = {
                         reply_markup: {
                             keyboard: [
@@ -145,7 +247,17 @@ Please select a feature to use:`,
                     );
                     break;
 
+                case "No. Go Back to First Menu":
                 case "Add New Member":
+                    userStates[chatId] = {};
+
+                    newMemberObject = {
+                        Course: "",
+                        ["Name in Persian"]: "",
+                        ["Telegram ID"]: "",
+                        id: "",
+                    };
+
                     const addNewMemberOptions = {
                         reply_markup: {
                             keyboard: [
@@ -165,27 +277,25 @@ Please select a feature to use:`,
                         "Which list would you like to add the new member to?",
                         addNewMemberOptions
                     );
+
                     userStates[chatId] = {
                         state: "Add Course",
                     };
+                    console.log(">>", userStates[chatId]);
+
                     break;
 
-                case "Technical Mentor":
-                case "C# Intern":
-                case "ML Intern":
-                case "Web Intern":
-                    bot.sendMessage(chatId, "Write members' name in English");
-                    userStates[chatId] = {
-                        state: "Add NameEN",
-                    };
+                case "Yes. Add New Member to List":
+                    console.log(newMemberObject);
                     break;
 
                 default:
-                    bot.sendMessage(
-                        chatId,
-                        `Unknown Command
-Use /start command to restart the bot`
-                    );
+                    console.log(">>", userStates[chatId]);
+                    if (!Object.keys(userStates[chatId]).length) {
+                        resetBot(chatId);
+                    } else {
+                        console.log(userStates[chatId].length);
+                    }
             }
         } else {
             bot.sendMessage(chatId, `You are not an Admin!`);
