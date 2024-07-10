@@ -1,0 +1,16 @@
+{
+  "name": "telegram-bot",
+  "version": "1.0.0",
+  "main": "bot.js",
+  "scripts": {
+    "start": "nodemon bot.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "firebase": "^10.12.3",
+    "node-telegram-bot-api": "^0.54.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}
