@@ -1,51 +1,48 @@
-let technicalMentorsList = [];
-let CSharpInternsList = [];
-let MLInternsList = [];
-let WebInternsList = [];
+// getData.js
+
+const { getDocs, collection } = require("firebase/firestore");
+const { db } = require("../config/firebase");
 
 const fetchData = async () => {
     try {
         const technicalMentorsFetch = await getDocs(
             collection(db, "Technical Mentors")
         );
-
-        const technicalMentorsData = technicalMentorsFetch.docs.map((doc) => ({
+        const technicalMentorsList = technicalMentorsFetch.docs.map((doc) => ({
             ...doc.data(),
             id: doc.id,
         }));
-
-        technicalMentorsList = technicalMentorsData;
-
-        // -------------
 
         const csharpInternsFetch = await getDocs(collection(db, "C# Interns"));
-        const csharpInternsData = csharpInternsFetch.docs.map((doc) => ({
+        const CSharpInternsList = csharpInternsFetch.docs.map((doc) => ({
             ...doc.data(),
             id: doc.id,
         }));
-
-        CSharpInternsList = csharpInternsData;
-
-        // -------------
 
         const mlInternsFetch = await getDocs(collection(db, "ML Interns"));
-        const mlInternsData = mlInternsFetch.docs.map((doc) => ({
+        const MLInternsList = mlInternsFetch.docs.map((doc) => ({
             ...doc.data(),
             id: doc.id,
         }));
-
-        MLInternsList = mlInternsData;
-
-        // -------------
 
         const webInternsFetch = await getDocs(collection(db, "Web Interns"));
-        const webInternsData = webInternsFetch.docs.map((doc) => ({
+        const WebInternsList = webInternsFetch.docs.map((doc) => ({
             ...doc.data(),
             id: doc.id,
         }));
 
-        WebInternsList = webInternsData;
+        return {
+            technicalMentorsList,
+            CSharpInternsList,
+            MLInternsList,
+            WebInternsList,
+        };
     } catch (error) {
-        setErrorMsg(error.message);
+        console.error("ERROR>>", error.message);
+        throw error;
     }
+};
+
+module.exports = {
+    fetchData,
 };
