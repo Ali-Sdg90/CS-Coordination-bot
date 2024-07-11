@@ -1,0 +1,3 @@
+# CS-Coordination-bot
+
+Aloha :)

@@ -9,6 +9,12 @@ const { addNewMember } = require("./components/AddNewMember");
 const { showList } = require("./components/ShowList");
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
+
+const groupId = process.env.GROUP_ID;
+const messageThreadId = process.env.MESSAGE_THREAD_ID;
+const messageId = process.env.MESSAGE_ID;
+const messageLink = process.env.MESSAGE_LINK;
+
 const bot = new TelegramBot(token, { polling: true });
 
 const userStates = {};
@@ -59,6 +65,38 @@ const removeKeyboard = {
     reply_markup: {
         remove_keyboard: true,
     },
+};
+
+const updateMessageFunc = (chatId) => {
+    fetchData().then((data) => {
+        const output = showList(data);
+        // console.log(output);
+
+        bot.editMessageText(output, {
+            chat_id: groupId,
+            message_id: messageId,
+            message_thread_id: messageThreadId,
+        })
+            .then(() => {
+                bot.sendMessage(chatId, output, {
+                    disable_web_page_preview: true,
+                }).then(() =>
+                    bot
+                        .sendMessage(
+                            chatId,
+                            `Message in the group has been updated successfully🎉\n${messageLink}`
+                        )
+                        .then(() =>
+                            bot.sendMessage(chatId, "Restart Bot: /start")
+                        )
+                );
+            })
+            .catch((error) => {
+                bot.sendMessage(chatId, `${String(error.message)}`).then(() =>
+                    bot.sendMessage(chatId, "Restart Bot: /start")
+                );
+            });
+    });
 };
 
 bot.on("message", async (msg) => {
@@ -217,12 +255,22 @@ bot.on("message", async (msg) => {
                 };
                 bot.sendMessage(
                     chatId,
-                    `Hello Admin: ${
+                    `Hello ${
                         !!msg.from.first_name ? msg.from.first_name : ""
                     } ${!!msg.from.last_name ? msg.from.last_name : ""}
 Please select a feature to use:`,
                     mainOptions
                 );
+
+                break;
+
+            case "@CS_Coordination_bot Send Step 0 Message":
+                bot.sendMessage(chatId, `Aloha Group :)`, {
+                    disable_web_page_preview: true,
+                }).then((sentMessage) => {
+                    const messageId = sentMessage.message_id;
+                    console.log(`Message ID: ${messageId}`);
+                });
 
                 break;
 
@@ -240,6 +288,7 @@ Please select a feature to use:`,
                             ["Add New Member"],
                             ["Remove Member"],
                             ["Get Latest List Update"],
+                            ["Update Group List"],
                             ["Back to Main Menu"],
                         ],
                         resize_keyboard: true,
@@ -300,13 +349,15 @@ Please select a feature to use:`,
 
                 if (newMemberObject.id) {
                     console.log(newMemberObject);
-                    addNewMember(newMemberObject);
 
-                    bot.sendMessage(
-                        chatId,
-                        `"${newMemberObject.id}" has been added to "${newMemberObject.Course}s" list.`,
-                        removeKeyboard
-                    );
+                    addNewMember(newMemberObject).then(() => {
+                        updateMessageFunc(chatId);
+                    }),
+                        bot.sendMessage(
+                            chatId,
+                            `"${newMemberObject.id}" has been added to "${newMemberObject.Course}s" list.`,
+                            removeKeyboard
+                        );
 
                     newMemberObject = {
                         Course: "",
@@ -318,6 +369,8 @@ Please select a feature to use:`,
                     resetBot(chatId);
                 }
 
+                break;
+
             //
             // Get List Update
             //
@@ -326,9 +379,17 @@ Please select a feature to use:`,
                     const output = showList(data);
                     // console.log(output);
 
-                    bot.sendMessage(chatId, output);
-                    bot.sendMessage(chatId, "Restart Bot: /start");
+                    bot.sendMessage(chatId, output, {
+                        disable_web_page_preview: true,
+                    }).then(() =>
+                        bot.sendMessage(chatId, "Restart Bot: /start")
+                    );
                 });
+
+                break;
+
+            case "Update Group List":
+                updateMessageFunc(chatId);
 
                 break;
 
