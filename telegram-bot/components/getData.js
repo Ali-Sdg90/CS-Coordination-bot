@@ -1,5 +1,3 @@
-// getData.js
-
 const { getDocs, collection } = require("firebase/firestore");
 const { db } = require("../config/firebase");
 
