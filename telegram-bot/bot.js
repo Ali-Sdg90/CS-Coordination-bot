@@ -28,6 +28,12 @@ let newMemberObject = {
     id: "",
 };
 
+let removeMemberObject = {
+    Course: "",
+    ValidNames: [],
+    id: "",
+};
+
 const resetBot = (chatId) => {
     userStates[chatId] = {};
 
@@ -61,11 +67,13 @@ const showUpdateNewMember = (chatId) => {
     bot.sendMessage(chatId, outputStr);
 };
 
-const removeKeyboard = {
-    reply_markup: {
-        remove_keyboard: true,
-    },
-};
+// const removeKeyboard = {
+//     {
+//         reply_markup: JSON.stringify({
+//             remove_keyboard: true,
+//         }),
+//     }
+// };
 
 const updateMessageFunc = (chatId) => {
     fetchData().then((data) => {
@@ -99,6 +107,21 @@ const updateMessageFunc = (chatId) => {
     });
 };
 
+const addNewMemberOptions = {
+    reply_markup: {
+        keyboard: [
+            ["Technical Mentor"],
+            ["C# Intern"],
+            ["ML Intern"],
+            ["Web Intern"],
+            ["Back to Step 0 Actions Menu"],
+        ],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+        input_field_placeholder: "Select a list",
+    },
+};
+
 bot.on("message", async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
@@ -124,7 +147,7 @@ bot.on("message", async (msg) => {
             text !== "/start"
         ) {
             switch (userStates[chatId].state) {
-                case "Add Course": // 1
+                case "Add: Course": // 1.1
                     if (
                         text === "Technical Mentor" ||
                         text === "C# Intern" ||
@@ -137,13 +160,17 @@ bot.on("message", async (msg) => {
                         };
                         showUpdateNewMember(chatId);
 
-                        bot.sendMessage(
+                        await bot.sendMessage(
                             chatId,
                             "Write members' full name in Farsi",
-                            removeKeyboard
+                            {
+                                reply_markup: JSON.stringify({
+                                    remove_keyboard: true,
+                                }),
+                            }
                         );
                         userStates[chatId] = {
-                            state: "Add NameFA",
+                            state: "Add: NameFA",
                         };
                     } else {
                         userStates[chatId] = {};
@@ -151,7 +178,7 @@ bot.on("message", async (msg) => {
 
                     break;
 
-                case "Add NameFA": // 2
+                case "Add: NameFA": // 1.2
                     newMemberObject = {
                         ...newMemberObject,
                         ["Name in Persian"]: text,
@@ -160,12 +187,12 @@ bot.on("message", async (msg) => {
 
                     bot.sendMessage(chatId, "Write members' Telegram ID");
                     userStates[chatId] = {
-                        state: "Add TelegramID",
+                        state: "Add: TelegramID",
                     };
 
                     break;
 
-                case "Add TelegramID": // 3
+                case "Add: TelegramID": // 1.3
                     newMemberObject = {
                         ...newMemberObject,
                         ["Telegram ID"]: text,
@@ -177,12 +204,12 @@ bot.on("message", async (msg) => {
                         "Write members' full name in English"
                     );
                     userStates[chatId] = {
-                        state: "Add NameEN",
+                        state: "Add: NameEN",
                     };
 
                     break;
 
-                case "Add NameEN": // 4
+                case "Add: NameEN": // 1.4
                     newMemberObject = { ...newMemberObject, id: text };
                     showUpdateNewMember(chatId);
 
@@ -190,7 +217,7 @@ bot.on("message", async (msg) => {
                         reply_markup: {
                             keyboard: [
                                 ["Yes. Add New Member to List"],
-                                ["No. Go Back to First Menu"],
+                                ["No. Go Back to First Add Menu"],
                             ],
                             resize_keyboard: true,
                             one_time_keyboard: true,
@@ -203,16 +230,146 @@ bot.on("message", async (msg) => {
                         submitNewMember
                     );
                     userStates[chatId] = {
-                        state: "submit list",
+                        state: "Add: Submit list",
                     };
 
                     break;
 
-                case "submit list": // 5
+                case "Add: Submit list": // 1.5
                     if (
                         !(
                             text === "Yes. Add New Member to List" ||
-                            text === "No. Go Back to First Menu"
+                            text === "No. Go Back to First Add Menu"
+                        )
+                    ) {
+                        userStates[chatId] = {};
+                    }
+
+                    break;
+
+                case "Remove: Course": // 2.1
+                    if (
+                        text === "Technical Mentor" ||
+                        text === "C# Intern" ||
+                        text === "ML Intern" ||
+                        text === "Web Intern"
+                    ) {
+                        fetchData().then((data) => {
+                            let dateCourse = "";
+                            switch (text) {
+                                case "Technical Mentor":
+                                    dateCourse = "technicalMentorsList";
+                                    break;
+                                case "C# Intern":
+                                    dateCourse = "CSharpInternsList";
+                                    break;
+                                case "ML Intern":
+                                    dateCourse = "MLInternsList";
+                                    break;
+                                case "Web Intern":
+                                    dateCourse = "WebInternsList";
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                            const keyboard = data[dateCourse].map((member) => [
+                                member.id,
+                            ]);
+
+                            removeMemberObject = {
+                                ...removeMemberObject,
+                                Course: dateCourse,
+                                ValidNames: keyboard,
+                            };
+
+                            keyboard.push(["Back to Remove Member List"]);
+
+                            bot.sendMessage(
+                                chatId,
+                                `Select ${text} that you want to remove`,
+                                {
+                                    reply_markup: {
+                                        keyboard: keyboard,
+                                        resize_keyboard: true,
+                                        one_time_keyboard: true,
+                                        input_field_placeholder:
+                                            "Select a list",
+                                    },
+                                }
+                            );
+                        });
+
+                        userStates[chatId] = {
+                            state: "Remove: Member",
+                        };
+                    } else {
+                        userStates[chatId] = {};
+                    }
+                    break;
+
+                case "Remove: Member": // 2.2
+                    console.log(String(removeMemberObject.ValidNames));
+
+                    if (String(removeMemberObject.ValidNames).includes(text)) {
+                        fetchData().then((data) => {
+                            let sameCourseAsTarget =
+                                data[removeMemberObject.Course];
+
+                            const targetedMember = sameCourseAsTarget.filter(
+                                (member) => member.id === text
+                            );
+
+                            const entriesObj = Object.entries(
+                                targetedMember[0]
+                            );
+                            let outputStr = `Are you sure you want to remove ${targetedMember[0].id}?\n\n`;
+
+                            entriesObj.map(
+                                (row) =>
+                                    (outputStr += `${
+                                        row[0] === "id"
+                                            ? "Full Name in English"
+                                            : row[0] === "Name in Persian"
+                                            ? "Full Name in Farsi"
+                                            : row[0]
+                                    }: ${row[1] ? row[1] : "-"}\n`)
+                            );
+
+                            const deletePermission = {
+                                reply_markup: {
+                                    keyboard: [
+                                        [`Yes. Delete Member`],
+                                        ["No. Go Back to First Remove Menu"],
+                                    ],
+                                    resize_keyboard: true,
+                                    one_time_keyboard: true,
+                                    input_field_placeholder: "Choose a feature",
+                                },
+                            };
+
+                            bot.sendMessage(
+                                chatId,
+                                outputStr,
+                                deletePermission
+                            );
+
+                            removeMemberObject = {
+                                ...removeMemberObject,
+                                id: targetedMember[0].id,
+                            };
+                        });
+                    } else {
+                        userStates[chatId] = {};
+                    }
+
+                    break;
+
+                case "Remove: Submit list": // 2.3
+                    if (
+                        !(
+                            text === "Yes. Delete Member" ||
+                            text === "No. Go Back to First Remove Menu"
                         )
                     ) {
                         userStates[chatId] = {};
@@ -306,7 +463,7 @@ Please select a feature to use:`,
             //
             // Add New Member
             //
-            case "No. Go Back to First Menu":
+            case "No. Go Back to First Add Menu":
             case "Add New Member":
                 userStates[chatId] = {};
 
@@ -317,20 +474,6 @@ Please select a feature to use:`,
                     id: "",
                 };
 
-                const addNewMemberOptions = {
-                    reply_markup: {
-                        keyboard: [
-                            ["Technical Mentor"],
-                            ["C# Intern"],
-                            ["ML Intern"],
-                            ["Web Intern"],
-                            ["Back to Step 0 Actions Menu"],
-                        ],
-                        resize_keyboard: true,
-                        one_time_keyboard: true,
-                        input_field_placeholder: "Select a list",
-                    },
-                };
                 bot.sendMessage(
                     chatId,
                     "Which list would you like to add the new member to?",
@@ -338,7 +481,7 @@ Please select a feature to use:`,
                 );
 
                 userStates[chatId] = {
-                    state: "Add Course",
+                    state: "Add: Course",
                 };
                 console.log(">>", userStates[chatId]);
 
@@ -356,7 +499,11 @@ Please select a feature to use:`,
                         bot.sendMessage(
                             chatId,
                             `"${newMemberObject.id}" has been added to "${newMemberObject.Course}s" list.`,
-                            removeKeyboard
+                            {
+                                reply_markup: JSON.stringify({
+                                    remove_keyboard: true,
+                                }),
+                            }
                         );
 
                     newMemberObject = {
@@ -388,13 +535,43 @@ Please select a feature to use:`,
 
                 break;
 
+            //
+            // Send List Update
+            //
             case "Update Group List":
                 updateMessageFunc(chatId);
 
                 break;
 
+            //
+            // Remove Member
+            //
+            case "Remove Member":
+            case "Back to Remove Member List":
+            case "No. Go Back to First Remove Menu":
+                bot.sendMessage(
+                    chatId,
+                    "In which list would you want to remove member?",
+                    addNewMemberOptions
+                );
+
+                userStates[chatId] = {
+                    state: "Remove: Course",
+                };
+
+                break;
+
+            case "Yes. Delete Member":
+                if (removeMemberObject.id) {
+                    console.log(removeMemberObject);
+                } else {
+                    resetBot(chatId);
+                }
+                break;
+
             default:
                 console.log(">>", userStates[chatId]);
+
                 if (!Object.keys(userStates[chatId]).length) {
                     resetBot(chatId);
                 } else {
