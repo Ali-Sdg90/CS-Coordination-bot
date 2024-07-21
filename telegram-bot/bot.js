@@ -572,10 +572,19 @@ Please select a feature to use:`,
             default:
                 console.log(">>", userStates[chatId]);
 
-                if (!Object.keys(userStates[chatId]).length) {
+                try {
+                    if (
+                        userStates &&
+                        userStates[chatId] &&
+                        !Object.keys(userStates[chatId]).length
+                    ) {
+                        resetBot(chatId);
+                    } else {
+                        console.log(userStates[chatId].length);
+                    }
+                } catch (err) {
+                    console.log("ERROR!!!! >> ", err);
                     resetBot(chatId);
-                } else {
-                    console.log(userStates[chatId].length);
                 }
         }
     } else {
