@@ -42,10 +42,10 @@ const sortNames = (list) => {
 
 const showList = (data) => {
     let {
-        technicalMentorsList,
-        CSharpInternsList,
-        MLInternsList,
-        WebInternsList,
+        "Technical Mentors": technicalMentorsList,
+        "C# Interns": CSharpInternsList,
+        "ML Interns": MLInternsList,
+        "Web Interns": WebInternsList,
     } = data;
 
     technicalMentorsList = sortNames(technicalMentorsList);

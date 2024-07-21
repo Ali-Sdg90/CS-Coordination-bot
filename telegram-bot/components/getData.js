@@ -30,10 +30,10 @@ const fetchData = async () => {
         }));
 
         return {
-            technicalMentorsList,
-            CSharpInternsList,
-            MLInternsList,
-            WebInternsList,
+            "Technical Mentors": technicalMentorsList,
+            "C# Interns": CSharpInternsList,
+            "ML Interns": MLInternsList,
+            "Web Interns": WebInternsList,
         };
     } catch (error) {
         console.error("ERROR>>", error.message);

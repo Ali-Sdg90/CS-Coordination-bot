@@ -2,18 +2,19 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 
 const { db } = require("./config/firebase");
-const { setDoc, doc } = require("firebase/firestore");
+const { setDoc, doc, deleteDoc } = require("firebase/firestore");
 const { admins } = require("./config/admins");
 const { fetchData } = require("./components/getData");
 const { addNewMember } = require("./components/AddNewMember");
 const { showList } = require("./components/ShowList");
-
-const token = process.env.TELEGRAM_BOT_TOKEN;
+const { addNewMemberOptions } = require("./components/commonFunctions");
 
 const groupId = process.env.GROUP_ID;
 const messageThreadId = process.env.MESSAGE_THREAD_ID;
 const messageId = process.env.MESSAGE_ID;
 const messageLink = process.env.MESSAGE_LINK;
+
+const token = process.env.TELEGRAM_BOT_TOKEN;
 
 const bot = new TelegramBot(token, { polling: true });
 
@@ -51,7 +52,7 @@ Use /start command to restart the bot`
     );
 };
 
-const showUpdateNewMember = (chatId) => {
+const showUpdateNewMember = async (chatId) => {
     const entriesObj = Object.entries(newMemberObject);
     let outputStr = "New Members' information: \n\n";
     entriesObj.map(
@@ -64,62 +65,34 @@ const showUpdateNewMember = (chatId) => {
                     : row[0]
             }: ${row[1] ? row[1] : "-"}\n`)
     );
-    bot.sendMessage(chatId, outputStr);
+    await bot.sendMessage(chatId, outputStr);
 };
 
-// const removeKeyboard = {
-//     {
-//         reply_markup: JSON.stringify({
-//             remove_keyboard: true,
-//         }),
-//     }
-// };
-
-const updateMessageFunc = (chatId) => {
-    fetchData().then((data) => {
+const updateMessageFunc = async (chatId) => {
+    try {
+        const data = await fetchData();
         const output = showList(data);
-        // console.log(output);
 
-        bot.editMessageText(output, {
+        await bot.editMessageText(output, {
             chat_id: groupId,
             message_id: messageId,
             message_thread_id: messageThreadId,
-        })
-            .then(() => {
-                bot.sendMessage(chatId, output, {
-                    disable_web_page_preview: true,
-                }).then(() =>
-                    bot
-                        .sendMessage(
-                            chatId,
-                            `Message in the group has been updated successfully🎉\n${messageLink}`
-                        )
-                        .then(() =>
-                            bot.sendMessage(chatId, "Restart Bot: /start")
-                        )
-                );
-            })
-            .catch((error) => {
-                bot.sendMessage(chatId, `${String(error.message)}`).then(() =>
-                    bot.sendMessage(chatId, "Restart Bot: /start")
-                );
-            });
-    });
-};
+        });
 
-const addNewMemberOptions = {
-    reply_markup: {
-        keyboard: [
-            ["Technical Mentor"],
-            ["C# Intern"],
-            ["ML Intern"],
-            ["Web Intern"],
-            ["Back to Step 0 Actions Menu"],
-        ],
-        resize_keyboard: true,
-        one_time_keyboard: true,
-        input_field_placeholder: "Select a list",
-    },
+        await bot.sendMessage(chatId, output, {
+            disable_web_page_preview: true,
+        });
+
+        await bot.sendMessage(
+            chatId,
+            `Message in the group has been updated successfully🎉\n${messageLink}`
+        );
+
+        await bot.sendMessage(chatId, "Restart Bot: /start");
+    } catch (error) {
+        await bot.sendMessage(chatId, `${String(error.message)}`);
+        await bot.sendMessage(chatId, "Restart Bot: /start");
+    }
 };
 
 bot.on("message", async (msg) => {
@@ -135,6 +108,25 @@ bot.on("message", async (msg) => {
         isAdminUsingApp = true;
     } else {
         isAdminUsingApp = false;
+    }
+
+    //
+    // Get Message ID
+    //
+    // console.log("==>", msg.chat.type);
+    if (msg.chat.type === "supergroup") {
+        if (
+            text === "@CS_Coordination_bot Send Step 0 Message" &&
+            isAdminUsingApp
+        ) {
+            bot.sendMessage(chatId, `Aloha Group :)`, {
+                disable_web_page_preview: true,
+            }).then((sentMessage) => {
+                const messageId = sentMessage.message_id;
+                console.log(`Message ID: ${messageId}`);
+            });
+        }
+        return;
     }
 
     if (isAdminUsingApp) {
@@ -158,7 +150,8 @@ bot.on("message", async (msg) => {
                             ...newMemberObject,
                             Course: text,
                         };
-                        showUpdateNewMember(chatId);
+                        (() => {})();
+                        await showUpdateNewMember(chatId);
 
                         await bot.sendMessage(
                             chatId,
@@ -169,6 +162,7 @@ bot.on("message", async (msg) => {
                                 }),
                             }
                         );
+
                         userStates[chatId] = {
                             state: "Add: NameFA",
                         };
@@ -183,9 +177,9 @@ bot.on("message", async (msg) => {
                         ...newMemberObject,
                         ["Name in Persian"]: text,
                     };
-                    showUpdateNewMember(chatId);
+                    await showUpdateNewMember(chatId);
 
-                    bot.sendMessage(chatId, "Write members' Telegram ID");
+                    await bot.sendMessage(chatId, "Write members' Telegram ID");
                     userStates[chatId] = {
                         state: "Add: TelegramID",
                     };
@@ -197,9 +191,9 @@ bot.on("message", async (msg) => {
                         ...newMemberObject,
                         ["Telegram ID"]: text,
                     };
-                    showUpdateNewMember(chatId);
+                    await showUpdateNewMember(chatId);
 
-                    bot.sendMessage(
+                    await bot.sendMessage(
                         chatId,
                         "Write members' full name in English"
                     );
@@ -211,7 +205,7 @@ bot.on("message", async (msg) => {
 
                 case "Add: NameEN": // 1.4
                     newMemberObject = { ...newMemberObject, id: text };
-                    showUpdateNewMember(chatId);
+                    await showUpdateNewMember(chatId);
 
                     const submitNewMember = {
                         reply_markup: {
@@ -224,7 +218,7 @@ bot.on("message", async (msg) => {
                             input_field_placeholder: "Choose an action",
                         },
                     };
-                    bot.sendMessage(
+                    await bot.sendMessage(
                         chatId,
                         "Are new members' information correct?",
                         submitNewMember
@@ -255,31 +249,15 @@ bot.on("message", async (msg) => {
                         text === "Web Intern"
                     ) {
                         fetchData().then((data) => {
-                            let dateCourse = "";
-                            switch (text) {
-                                case "Technical Mentor":
-                                    dateCourse = "technicalMentorsList";
-                                    break;
-                                case "C# Intern":
-                                    dateCourse = "CSharpInternsList";
-                                    break;
-                                case "ML Intern":
-                                    dateCourse = "MLInternsList";
-                                    break;
-                                case "Web Intern":
-                                    dateCourse = "WebInternsList";
-                                    break;
-                                default:
-                                    break;
-                            }
+                            const course = text + "s";
 
-                            const keyboard = data[dateCourse].map((member) => [
+                            const keyboard = data[course].map((member) => [
                                 member.id,
                             ]);
 
                             removeMemberObject = {
                                 ...removeMemberObject,
-                                Course: dateCourse,
+                                Course: course,
                                 ValidNames: keyboard,
                             };
 
@@ -311,10 +289,19 @@ bot.on("message", async (msg) => {
                 case "Remove: Member": // 2.2
                     console.log(String(removeMemberObject.ValidNames));
 
-                    if (String(removeMemberObject.ValidNames).includes(text)) {
+                    if (
+                        String(removeMemberObject.ValidNames).includes(text) &&
+                        text !== "Back to Remove Member List"
+                    ) {
                         fetchData().then((data) => {
                             let sameCourseAsTarget =
                                 data[removeMemberObject.Course];
+
+                            console.log(
+                                "targetedMember[0] >>",
+                                sameCourseAsTarget,
+                                text
+                            );
 
                             const targetedMember = sameCourseAsTarget.filter(
                                 (member) => member.id === text
@@ -415,19 +402,9 @@ bot.on("message", async (msg) => {
                     `Hello ${
                         !!msg.from.first_name ? msg.from.first_name : ""
                     } ${!!msg.from.last_name ? msg.from.last_name : ""}
-Please select a feature to use:`,
+Please select a feature to use: 2`,
                     mainOptions
                 );
-
-                break;
-
-            case "@CS_Coordination_bot Send Step 0 Message":
-                bot.sendMessage(chatId, `Aloha Group :)`, {
-                    disable_web_page_preview: true,
-                }).then((sentMessage) => {
-                    const messageId = sentMessage.message_id;
-                    console.log(`Message ID: ${messageId}`);
-                });
 
                 break;
 
@@ -564,6 +541,25 @@ Please select a feature to use:`,
             case "Yes. Delete Member":
                 if (removeMemberObject.id) {
                     console.log(removeMemberObject);
+
+                    const memberDoc = doc(
+                        db,
+                        removeMemberObject.Course,
+                        removeMemberObject.id
+                    );
+                    deleteDoc(memberDoc);
+
+                    await bot.sendMessage(
+                        chatId,
+                        `"${removeMemberObject.id}" has been removed from "${removeMemberObject.Course}s" list.`,
+                        {
+                            reply_markup: JSON.stringify({
+                                remove_keyboard: true,
+                            }),
+                        }
+                    );
+
+                    await updateMessageFunc(chatId);
                 } else {
                     resetBot(chatId);
                 }
