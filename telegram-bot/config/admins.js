@@ -7,7 +7,7 @@ const admins = [
     "ElaheDorani",
     "HootanHT",
     "zahrahangari",
-    "zahramohamadi1999",
+    "zahramdn099",
     "Tirednarges",
     "ZahraRezaei_1",
     "marirood",
@@ -16,7 +16,7 @@ const admins = [
     "Afshin_Alizadeh",
     "mehrandvd",
     "mehran",
-    // "A909392909392909392909392909392S",
+    "A909392909392909392909392909392S",
 ];
 
 module.exports = { admins };
